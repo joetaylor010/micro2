@@ -57,7 +57,7 @@ void setup() {
   
   sei(); // enable interrupts
 
-  // disable LCD output
+  // disable 7-segment output
   digitalWrite(dig1, HIGH);
   digitalWrite(dig2, HIGH);
 
