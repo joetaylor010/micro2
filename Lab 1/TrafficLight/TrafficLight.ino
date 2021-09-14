@@ -8,7 +8,7 @@
 // 9/13/21 jct - functional completion and cleanup
 
 // pin declarations
-int button = 2;  // button; other end to GND
+int button = 2;  // button; 10Kohm pulldown to GND, other end to +5V
 int red = 3;     // red LED; through a 220ohm to GND
 int yellow = 4;  // yellow LED; through a 220ohm to GND
 int green = 5;   // green LED; through a 220ohm to GND
