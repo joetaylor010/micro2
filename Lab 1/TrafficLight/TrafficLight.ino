@@ -5,6 +5,7 @@
 
 // revision history:
 // 9/8/21 jct - file init
+// 9/13/21 jct - functional completion and cleanup
 
 // pin declarations
 int button = 2;  // button; other end to GND
@@ -24,32 +25,24 @@ int dig2 = 10;   // cathode for digit 2
 bool buttonFlag = false;
 bool timerFlag = false;
 unsigned int counter;
+unsigned char sevenSegTable[]= {0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x00};
 
-unsigned char table[]=
-{0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x00};
-
-ISR(TIMER1_COMPA_vect){ // timer ISR
-  Serial.println("Timer Interrupt Ran");
-  timerFlag = true;
-}
-
-void buttonPress() { // button ISR
-  buttonFlag = true;
-}
+// ISR's for button and timer
+ISR(TIMER1_COMPA_vect) { timerFlag = true; }
+void buttonPress() { buttonFlag = true; }
 
 void setup() {
-  Serial.begin(9600);
   pinMode(red, OUTPUT);
   pinMode(yellow, OUTPUT);
   pinMode(green, OUTPUT);
-  pinMode(button, INPUT_PULLUP);
+  pinMode(button, INPUT);
   attachInterrupt(digitalPinToInterrupt(button), buttonPress, CHANGE);
   pinMode(buzzer, OUTPUT);
-  pinMode(latch,OUTPUT);
-  pinMode(clock,OUTPUT);
-  pinMode(data,OUTPUT);
-  pinMode(dig1,OUTPUT);
-  pinMode(dig2,OUTPUT);
+  pinMode(latch, OUTPUT);
+  pinMode(clock, OUTPUT);
+  pinMode(data, OUTPUT);
+  pinMode(dig1, OUTPUT);
+  pinMode(dig2, OUTPUT);
 
   cli(); // disable interrupts
 
@@ -68,13 +61,11 @@ void setup() {
   digitalWrite(dig1, HIGH);
   digitalWrite(dig2, HIGH);
 
-  int lightFlash = red;
   // flash red until button press
+  int lightFlash = red;
   while(!buttonFlag){
     if (timerFlag){
-      Serial.println(lightFlash);
-      setLight(lightFlash);
-      lightFlash *= -1;
+      setLight(lightFlash *= -1);
       timerFlag = false;
     }
     delay(1);
@@ -83,22 +74,18 @@ void setup() {
 
 void Display(unsigned int num)
 {
-  // set shift register for first digit
+  // set shift register for first digit and flash for 5ms
   digitalWrite(latch,LOW);
-  shiftOut(data,clock,MSBFIRST,table[num / 10]);
+  shiftOut(data,clock,MSBFIRST,sevenSegTable[num / 10]);
   digitalWrite(latch,HIGH);
-  
-  // flash first digit for 5 msec
   digitalWrite(dig1, LOW);
   delay(5);
   digitalWrite(dig1, HIGH);
 
-  // set shift register for second digit
+  // set shift register for second digit and flash for 5ms
   digitalWrite(latch,LOW);
-  shiftOut(data,clock,MSBFIRST,table[num % 10]);
+  shiftOut(data,clock,MSBFIRST,sevenSegTable[num % 10]);
   digitalWrite(latch,HIGH);
-  
-  // flash second digit for 5 msec
   digitalWrite(dig2, LOW);
   delay(5);
   digitalWrite(dig2, HIGH);
@@ -110,44 +97,29 @@ void setLight(int color) {
   digitalWrite(green, color == green);
 }
 
+void runDisplay() {
+  if (timerFlag) {
+      counter--;
+      timerFlag = false;
+    }
+  digitalWrite(buzzer, counter <= 3);
+  Display(counter);
+}
+
 void loop() {
   // state 1: red light
   setLight(red);
   counter = 20;
-  while (counter > 0) {
-    if (timerFlag) {
-      counter--;
-      Serial.println(counter);
-      timerFlag = false;
-    }
-    digitalWrite(buzzer, counter <= 3);
-    Display(counter);
-  }
+  while (counter > 0) runDisplay();
 
   // state 2: green light
   setLight(green);
   counter = 20;
-  while (counter > 0) {
-    if (timerFlag) {
-      counter--;
-      Serial.println(counter);
-      timerFlag = false;
-    }
-    digitalWrite(buzzer, counter <= 3);
-    Display(counter);
-  }
+  while (counter > 0) runDisplay();
 
   // state 3: yellow light
   setLight(yellow);
   counter = 3;
-  while (counter > 0) {
-    if (timerFlag) {
-      counter--;
-      Serial.println(counter);
-      timerFlag = false;
-    }
-    digitalWrite(buzzer, counter <= 3);
-    Display(counter);
-  }
+  while (counter > 0) runDisplay();
   
 }
