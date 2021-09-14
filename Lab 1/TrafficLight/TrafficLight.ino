@@ -7,7 +7,7 @@
 // 9/8/21 jct - file init
 
 // pin declarations
-int button = 2;  // button; other end to +5V
+int button = 2;  // button; other end to GND
 int red = 3;     // red LED; through a 220ohm to GND
 int yellow = 4;  // yellow LED; through a 220ohm to GND
 int green = 5;   // green LED; through a 220ohm to GND
@@ -42,7 +42,7 @@ void setup() {
   pinMode(red, OUTPUT);
   pinMode(yellow, OUTPUT);
   pinMode(green, OUTPUT);
-  pinMode(button, INPUT);
+  pinMode(button, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(button), buttonPress, CHANGE);
   pinMode(buzzer, OUTPUT);
   pinMode(latch,OUTPUT);
