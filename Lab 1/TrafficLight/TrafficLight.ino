@@ -15,9 +15,9 @@ int green = 5;   // green LED; through a 220ohm to GND
 int buzzer = 13; // active buzzer; positive to pin 13, negative to GND
 
 // pin declarations for 7-segment display
-int data = 6;    // 74HC595 pin 6 DS
-int latch = 7;   // 74HC595 pin 7 STCP
-int clock = 8;   // 74HC595 pin 8 SHCP
+int data = 6;    // 74HC595 pin 14 DS
+int latch = 7;   // 74HC595 pin 12 STCP
+int clock = 8;   // 74HC595 pin 11 SHCP
 int dig1 = 9;    // cathode for digit 1
 int dig2 = 10;   // cathode for digit 2
 
