@@ -6,6 +6,7 @@
 // revision history:
 // 9/8/21 jct - file init
 // 9/13/21 jct - functional completion and cleanup
+// 9/23/21 jct - minor format edit
 
 // pin declarations
 int button = 2;  // button; 10Kohm pulldown to GND, other end to +5V
@@ -75,17 +76,17 @@ void setup() {
 void Display(unsigned int num)
 {
   // set shift register for first digit and flash for 5ms
-  digitalWrite(latch,LOW);
-  shiftOut(data,clock,MSBFIRST,sevenSegTable[num / 10]);
-  digitalWrite(latch,HIGH);
+  digitalWrite(latch, LOW);
+  shiftOut(data, clock, MSBFIRST, sevenSegTable[num / 10]);
+  digitalWrite(latch, HIGH);
   digitalWrite(dig1, LOW);
   delay(5);
   digitalWrite(dig1, HIGH);
 
   // set shift register for second digit and flash for 5ms
-  digitalWrite(latch,LOW);
-  shiftOut(data,clock,MSBFIRST,sevenSegTable[num % 10]);
-  digitalWrite(latch,HIGH);
+  digitalWrite(latch, LOW);
+  shiftOut(data, clock, MSBFIRST, sevenSegTable[num % 10]);
+  digitalWrite(latch, HIGH);
   digitalWrite(dig2, LOW);
   delay(5);
   digitalWrite(dig2, HIGH);
