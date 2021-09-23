@@ -122,5 +122,4 @@ void loop() {
   setLight(yellow);
   counter = 3;
   while (counter > 0) runDisplay();
-  
 }
