@@ -50,10 +50,10 @@ void loop() {
   }
 
   // detect shake of accelerometer
-  if (xGy > 16000 || xGy < -16000) Serial.print("B");
-  if (yGy > 16000 || yGy < -16000) Serial.print("B");
-  if (zGy > 16000 || zGy < -16000) Serial.print("B");
-
+  if (xGy > 17000 || xGy < -17000) Serial.print("B");
+  if (yGy > 17000 || yGy < -17000) Serial.print("B");
+  if (zGy > 17000 || zGy < -17000) Serial.print("B");
+  
   // data available
   if (Serial.available() > 0) inByte = Serial.read();
 
