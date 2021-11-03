@@ -1,66 +1,71 @@
 #include<Wire.h>
+#include "RTClib.h" // note: need to copy RTClib/ to "Arduino/libraries/"
+RTC_DS1307 rtc; // establish ds1307 object
 
-int xVal, yVal, inByte = 0;
-const int xInPin = A0;
-const int yInPin = A1;
-const int buzzerPin = 4;
-const int MPU_addr=0x68;
-int16_t xAc,yAc,zAc,Tmp,xGy,yGy,zGy;
+// next line only needed is days of week end up utilized
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+// pin declarations
+const int buttonPin = 2;
+
+// variable declarations
+bool buttonFlag = false;
+bool timerFlag = false;
+
+// ISR's for button and timer
+ISR(TIMER1_COMPA_vect) { timerFlag = true; }
+void buttonPress() { buttonFlag = true; }
 
 void setup(){
   Serial.begin(9600);
-  Wire.begin();
-  Wire.beginTransmission(MPU_addr);
-  Wire.write(0x6B);  // PWR_MGMT_1 register
-  Wire.write(0);     // set to zero (wakes up the MPU-6050)
-  Wire.endTransmission(true);
-  pinMode(xInPin, INPUT);
-  pinMode(yInPin, INPUT);
+  Wire.begin(); // establish I2C bus
+  rtc.begin();
+  //rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // only needed once
+  
+  pinMode(buttonPin, INPUT);
+  attachInterrupt(digitalPinToInterrupt(buttonPin), buttonPress, RISING);
+
+  cli(); // disable interrupts
+
+  // set timer1 interrupt at 1Hz
+  TCCR1A = 0; // set entire TCCR1A register to 0
+  TCCR1B = 0; // same for TCCR1B
+  TCNT1  = 0; // initialize counter value to 0
+  OCR1A = 15624; // frequency set, = (16*10^6) / (1hz*1024) - 1 (must be <65536)
+  TCCR1B |= (1 << WGM12); // turn on CTC mode
+  TCCR1B |= (1 << CS12) | (1 << CS10); // Set CS10 and CS12 bits for 1024 prescaler
+  TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
+  
+  sei(); // enable interrupts
 }
 
 void loop() {
-  noTone(buzzerPin);
-  Wire.beginTransmission(MPU_addr);
-  Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
-  Wire.endTransmission(false);
-  Wire.requestFrom(MPU_addr,14,true);  // request a total of 14 registers
-  
-  xAc=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)    
-  yAc=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  zAc=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  Tmp=Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
-  xGy=Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-  yGy=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-  zGy=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-
-  // handle joystick input
-  xVal = analogRead(xInPin);
-  yVal = analogRead(yInPin);
-  if (xVal < 128) Serial.print("D");
-  if (xVal > 896) Serial.print("A");
-  if (yVal < 128) Serial.print("W");
-  if (yVal > 896) Serial.print("S");
-
-  // handle gyro input if gyro isn't facing downward
-  if (zAc > 0) {
-    if (xAc < -8000) Serial.print("S");
-    if (xAc > 8000) Serial.print("W");
-    if (yAc < -8000) Serial.print("D");
-    if (yAc > 8000) Serial.print("A");
+  if (buttonFlag) {
+    // reverse direction
+    Serial.write("Button pressed");
+    while (digitalRead(buttonPin)) delay(10); // wait for button release
+    buttonFlag = false;
   }
 
-  // detect shake of accelerometer
-  if (xGy > 17000 || xGy < -17000) Serial.print("B");
-  if (yGy > 17000 || yGy < -17000) Serial.print("B");
-  if (zGy > 17000 || zGy < -17000) Serial.print("B");
-  
-  // data available
-  if (Serial.available() > 0) inByte = Serial.read();
-
-  if (inByte == 'E'){
-    tone(buzzerPin, 1000); // Send 1KHz sound signal...
-    inByte = 0;
+  if (timerFlag) {
+    DateTime now = rtc.now();
+    /*
+    Serial.print(now.year(), DEC);
+    Serial.print('/');
+    Serial.print(now.month(), DEC);
+    Serial.print('/');
+    Serial.print(now.day(), DEC);
+    Serial.print(" (");
+    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+    Serial.print(") ");
+    */
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(now.second(), DEC);
+    Serial.println();
+    timerFlag = false;
   }
-
-  delay(100); // don't refresh too quick
+  delay(10);
 }
