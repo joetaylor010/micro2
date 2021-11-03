@@ -1,16 +1,30 @@
+// Micro 2 Lab 3
+// Fall 2021
+// Joseph Taylor, Elizabeth Brown, Cody Bellec
+// November 2, 2021
+// the following resource was used to help get the ds1307 working:
+// https://create.arduino.cc/projecthub/electropeak/interfacing-ds1307-rtc-module-with-arduino-make-a-reminder-08cb61
+
+// todo:
+// add LCD functionality
+// add IT receiver functionality
+// verify compliance with spec
+// cleanup
+
 #include<Wire.h>
 #include "RTClib.h" // note: need to copy RTClib/ to "Arduino/libraries/"
 RTC_DS1307 rtc; // establish ds1307 object
 
-// next line only needed is days of week end up utilized
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-
 // pin declarations
 const int buttonPin = 2;
+const int motorEnable = 3;
+const int motorDirA = 4;
+const int motorDirB = 5;
 
 // variable declarations
-bool buttonFlag = false;
-bool timerFlag = false;
+bool buttonFlag = false; // used for button ISR
+bool timerFlag = false; // used for timer ISR
+int fanDirection = 1;
 
 // ISR's for button and timer
 ISR(TIMER1_COMPA_vect) { timerFlag = true; }
@@ -21,7 +35,10 @@ void setup(){
   Wire.begin(); // establish I2C bus
   rtc.begin();
   //rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // only needed once
-  
+
+  pinMode(motorEnable, OUTPUT);
+  pinMode(motorDirA, OUTPUT);
+  pinMode(motorDirB, OUTPUT);
   pinMode(buttonPin, INPUT);
   attachInterrupt(digitalPinToInterrupt(buttonPin), buttonPress, RISING);
 
@@ -40,31 +57,36 @@ void setup(){
 }
 
 void loop() {
+  digitalWrite(motorDirA, (fanDirection == 1));
+  digitalWrite(motorDirB, (fanDirection == -1));
+  
   if (buttonFlag) {
-    // reverse direction
-    Serial.write("Button pressed");
+    Serial.println("Button was pressed.");
+    fanDirection *= -1; // reverse direction
     while (digitalRead(buttonPin)) delay(10); // wait for button release
     buttonFlag = false;
   }
 
   if (timerFlag) {
     DateTime now = rtc.now();
-    /*
+    // print time to serial monitor
     Serial.print(now.year(), DEC);
     Serial.print('/');
     Serial.print(now.month(), DEC);
     Serial.print('/');
     Serial.print(now.day(), DEC);
-    Serial.print(" (");
-    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    Serial.print(") ");
-    */
+    Serial.print(" ");
     Serial.print(now.hour(), DEC);
     Serial.print(':');
     Serial.print(now.minute(), DEC);
     Serial.print(':');
     Serial.print(now.second(), DEC);
     Serial.println();
+
+    // if at the beginning of a minute, turn fan on for 30 seconds
+    if (now.second() == 0) { analogWrite(motorEnable, 255); }
+    if (now.second() == 30) { analogWrite(motorEnable, LOW); }
+    
     timerFlag = false;
   }
   delay(10);
