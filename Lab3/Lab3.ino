@@ -121,7 +121,7 @@ void loop() {
     delay(100);
     if (digitalRead(buttonPin)) {
       Serial.println("Button was pressed.");
-      fanDirection *= -1; // reverse direction
+      fanDirection = !fanDirection; // reverse direction
     }
     buttonFlag = false;
   }
