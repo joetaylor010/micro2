@@ -6,8 +6,6 @@
 // https://create.arduino.cc/projecthub/electropeak/interfacing-ds1307-rtc-module-with-arduino-make-a-reminder-08cb61
 
 // todo:
-// add LCD functionality
-// add IT receiver functionality
 // verify compliance with spec
 // cleanup
 
@@ -18,10 +16,10 @@
 
 // pin declarations
 const int buttonPin = 2;
-const int motorEnable = 3;
+const int receiverPin = 3;
 const int motorDirA = 4;
 const int motorDirB = 5;
-const int receiverPin = 6;
+const int motorEnable = 6;
 const int RS = 7;
 const int EN = 8;
 const int D4 = 9;
@@ -35,21 +33,19 @@ LiquidCrystal lcd(RS, EN, D4, D5, D6, D7); // establish lcd object
 // variable declarations
 bool buttonFlag = false; // used for button ISR
 bool timerFlag = false; // used for timer ISR
-bool downFlag = false;
-bool upFlag = true;
-int fanDirection = -1; // fan control
-bool fanAutoControl = true; // fan control
-int fanSpeed = 0; // fan control
+bool fanDirection = true; // clockwise if true
+bool fanAutoControl = true; // enables automatic fan control
+int fanSpeed = 0; // fan control; 0-255
 
 // ISR's for button and timer
 ISR(TIMER1_COMPA_vect) { timerFlag = true; }
-//void buttonPress() { buttonFlag = true; }
+void buttonPress() { buttonFlag = true; }
 
 void setup(){
   Serial.begin(9600);
   Wire.begin(); // establish I2C bus
   rtc.begin(); // start RTC
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // only needed once
+  //rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // only needed once
 
   IrReceiver.begin(receiverPin, 0, 0);
   Serial.print(F("Ready to receive IR signals at pin "));
@@ -57,11 +53,10 @@ void setup(){
 
   lcd.begin(16, 2);
 
-  pinMode(motorEnable, OUTPUT);
   pinMode(motorDirA, OUTPUT);
   pinMode(motorDirB, OUTPUT);
   pinMode(buttonPin, INPUT);
-  //attachInterrupt(digitalPinToInterrupt(buttonPin), buttonPress, RISING);
+  attachInterrupt(digitalPinToInterrupt(buttonPin), buttonPress, RISING);
 
   cli(); // disable interrupts
 
@@ -88,54 +83,46 @@ void loop() {
       Serial.println(fanSpeed);
     }
     else if (IrReceiver.decodedIRData.command == 0x44) {
-      fanDirection = 1; // fast backward (counter-clockwise)
+      fanDirection = false; // fast backward (counter-clockwise)
       Serial.print("Received CCW command. fanDirection = ");
       Serial.println(fanDirection);
     }
     else if (IrReceiver.decodedIRData.command == 0x43) {
-      fanDirection = -1; // fast forward (clockwise)
+      fanDirection = true; // fast forward (clockwise)
       Serial.print("Received CW command. fanDirection = ");
       Serial.println(fanDirection);
     }
     else if (IrReceiver.decodedIRData.command == 0x47) {
       fanAutoControl = !fanAutoControl; // func/stop (auto control / manual control)
-      Serial.println("Received auto/man command. fanAutoControl = ");
+      Serial.print("Received auto/man command. fanAutoControl = ");
       Serial.println(fanAutoControl);
     }
     else if (IrReceiver.decodedIRData.command == 0x09) {
-      upFlag = true;
+      fanSpeed += 20; // up (speed up)
+      if (fanSpeed > 255) fanSpeed = 255;
+      Serial.print("Received up command. New fanSpeed = ");
+      Serial.println(fanSpeed);
     }
     else if (IrReceiver.decodedIRData.command == 0x07) {
-      downFlag = true;
+      fanSpeed -= 20; // up (speed up)
+      if (fanSpeed < 0) fanSpeed = 0;
+      Serial.print("Received down command. New fanSpeed = ");
+      Serial.println(fanSpeed);
     }
     delay(250);
     IrReceiver.resume(); // Enable receiving of the next value
   }
 
-  if (upFlag) {
-    fanSpeed += 20; // up (speed up)
-    if (fanSpeed > 255) fanSpeed = 255;
-    Serial.print("Received speed up command. New speed = ");
-    Serial.println(fanSpeed);
-    upFlag = false;
-  }
-
-  if (downFlag) {
-    fanSpeed -= 20; // up (speed up)
-    if (fanSpeed < 0) fanSpeed = 0;
-    Serial.print("Received speed down command. New speed = ");
-    Serial.println(fanSpeed);
-    downFlag = false;
-  }
-  
   analogWrite(motorEnable, fanSpeed);
-  digitalWrite(motorDirA, (fanDirection == 1));
-  digitalWrite(motorDirB, (fanDirection == -1));
+  digitalWrite(motorDirA, !fanDirection);
+  digitalWrite(motorDirB, fanDirection);
 
   if (buttonFlag) {
-    Serial.println("Button was pressed.");
-    fanDirection *= -1; // reverse direction
-    while (digitalRead(buttonPin)) delay(10); // wait for button release
+    delay(100);
+    if (digitalRead(buttonPin)) {
+      Serial.println("Button was pressed.");
+      fanDirection *= -1; // reverse direction
+    }
     buttonFlag = false;
   }
 
@@ -157,21 +144,23 @@ void loop() {
     lcd.print(':');
     if (now.second() < 10) lcd.print("0");
     lcd.print(now.second(), DEC);
+    lcd.print(" ");
 
     // display fan information on lcd
     lcd.setCursor(2, 1);
-    if (fanDirection == -1) lcd.print("CW  ");
+    if (fanDirection) lcd.print("CW  ");
     else lcd.print("CCW ");
     if (fanAutoControl) lcd.print("AUTO ");
     else lcd.print("MAN  ");
     if (fanSpeed < 10) lcd.print(" ");
     if (fanSpeed < 100) lcd.print(" ");
     lcd.print(fanSpeed);
+    lcd.print("  ");
 
     // if at the beginning of a minute, turn fan on for 30 seconds
-    if ((now.second() == 0) && (fanAutoControl == true)) { fanSpeed = 255; }
-    if ((now.second() == 30) && (fanAutoControl == true)) { fanSpeed = 0; }
-    
+    if (now.second() == 0 && fanAutoControl) { fanSpeed = 255; }
+    if (now.second() == 30 && fanAutoControl) { fanSpeed = 0; }
+  
     timerFlag = false;
   }
   delay(10);
