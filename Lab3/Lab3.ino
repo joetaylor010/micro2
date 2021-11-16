@@ -35,7 +35,7 @@ bool buttonFlag = false; // used for button ISR
 bool timerFlag = false; // used for timer ISR
 bool fanDirection = true; // clockwise if true
 bool fanAutoControl = true; // enables automatic fan control
-int fanSpeed = 0; // fan control; 0-255
+unsigned fanSpeed = 0; // fan control; 0-3
 
 // ISR's for button and timer
 ISR(TIMER1_COMPA_vect) { timerFlag = true; }
@@ -77,7 +77,7 @@ void loop() {
     // Print a short summary of received data
     //IrReceiver.printIRResultShort(&Serial);
     if (IrReceiver.decodedIRData.command == 0x45) {
-      if (!fanSpeed) fanSpeed = 255; // power button
+      if (!fanSpeed) fanSpeed = 3; // power button
       else fanSpeed = 0;
       Serial.print("Received on/off command. fanSpeed = ");
       Serial.println(fanSpeed);
@@ -98,22 +98,23 @@ void loop() {
       Serial.println(fanAutoControl);
     }
     else if (IrReceiver.decodedIRData.command == 0x09) {
-      fanSpeed += 20; // up (speed up)
-      if (fanSpeed > 255) fanSpeed = 255;
+      if (fanSpeed < 3) fanSpeed += 1; // up (speed up)
       Serial.print("Received up command. New fanSpeed = ");
       Serial.println(fanSpeed);
     }
     else if (IrReceiver.decodedIRData.command == 0x07) {
-      fanSpeed -= 20; // up (speed up)
-      if (fanSpeed < 0) fanSpeed = 0;
+      if (fanSpeed > 0) fanSpeed -= 1; // down (slow down)
       Serial.print("Received down command. New fanSpeed = ");
       Serial.println(fanSpeed);
     }
     delay(250);
     IrReceiver.resume(); // Enable receiving of the next value
   }
-
-  analogWrite(motorEnable, fanSpeed);
+  
+  if (fanSpeed == 1) analogWrite(motorEnable, 127);
+  else if (fanSpeed == 2) analogWrite(motorEnable, 191);
+  else if (fanSpeed == 3) analogWrite(motorEnable, 255);
+  else analogWrite(motorEnable, 0);
   digitalWrite(motorDirA, !fanDirection);
   digitalWrite(motorDirB, fanDirection);
 
@@ -148,17 +149,18 @@ void loop() {
 
     // display fan information on lcd
     lcd.setCursor(2, 1);
-    if (fanDirection) lcd.print("CW  ");
-    else lcd.print("CCW ");
+    if (fanDirection) lcd.print("C  ");
+    else lcd.print("CC ");
     if (fanAutoControl) lcd.print("AUTO ");
     else lcd.print("MAN  ");
-    if (fanSpeed < 10) lcd.print(" ");
-    if (fanSpeed < 100) lcd.print(" ");
-    lcd.print(fanSpeed);
+    if (fanSpeed == 1) lcd.print("1/2 ");
+    else if (fanSpeed == 2) lcd.print("3/4 ");
+    else if (fanSpeed == 3) lcd.print("Full");
+    else (lcd.print("0   "));
     lcd.print("  ");
 
     // if at the beginning of a minute, turn fan on for 30 seconds
-    if (now.second() == 0 && fanAutoControl) { fanSpeed = 255; }
+    if (now.second() == 0 && fanAutoControl) { fanSpeed = 3; }
     if (now.second() == 30 && fanAutoControl) { fanSpeed = 0; }
   
     timerFlag = false;
