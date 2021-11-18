@@ -148,9 +148,9 @@ void loop() {
     lcd.print(" ");
 
     // display fan information on lcd
-    lcd.setCursor(2, 1);
-    if (fanDirection) lcd.print("C  ");
-    else lcd.print("CC ");
+    lcd.setCursor(1, 1);
+    if (fanDirection) lcd.print(" C  ");
+    else lcd.print(" CC ");
     if (fanAutoControl) lcd.print("AUTO ");
     else lcd.print("MAN  ");
     if (fanSpeed == 1) lcd.print("1/2 ");
